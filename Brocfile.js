@@ -1,10 +1,5 @@
-var compile = require('./index');
-var exportTree = require('broccoli-export-tree');
+const JStoJSON = require('./index');
 
-var files = compile('i18n', {
-  outputFolder: ''
-});
+const files = JStoJSON('i18n');
 
-module.exports = exportTree(files, {
-  destDir: 'js'
-});
+module.exports = files;

@@ -1,62 +1,29 @@
 /*eslint no-sync: 0*/
 
-var fs = require('fs');
-var path = require('path');
-var mkdirp = require('mkdirp');
-var Writer = require('broccoli-writer');
-var Constructor = require('util').inherits;
+'use strict';
+const Filter = require('broccoli-filter');
 
-module.exports = I18nCompiler;
-Constructor(I18nCompiler, Writer);
+const nodefy = require('nodefy');
+const jsonStableStringify = require('json-stable-stringify');
 
-function I18nCompiler(inputTree, options) {
-  if (!(this instanceof I18nCompiler)) {
-    return new I18nCompiler(inputTree, options);
-  }
+function JStoJSON(inputTree, options) {
+	if (!(this instanceof JStoJSON)) {
+		return new JStoJSON(inputTree);
+	}
 
-  this.inputTree = inputTree;
+	Filter.call(this, inputTree);
 
-  Object.keys(options || {}).forEach(function (key) {
-    this[key] = options[key];
-  }, this);
+	this.inputTree = inputTree;
 }
 
-I18nCompiler.prototype.write = function (readTree, destDir) {
-  var myDestDir = path.join(destDir, this.outputFolder);
+JStoJSON.prototype = Object.create(Filter.prototype);
+JStoJSON.prototype.constructor = JStoJSON;
 
-  return readTree(this.inputTree).then(function (srcDir) {
-    var files = fs.readdirSync(srcDir).filter(function (d) {
-      var stats = fs.statSync(path.join(srcDir, d));
-      return d[0] !== '.' && !stats.isDirectory(); // Just exclude anything which starts with a . and isn't a directory
-    });
+JStoJSON.prototype.extensions = ['js'];
+JStoJSON.prototype.targetExtension = 'json';
 
-    // setup the output-folder
-    mkdirp.sync(myDestDir);
+JStoJSON.prototype.processString = function (str) {
+  return jsonStableStringify(eval(nodefy.parse(str)));
+};
 
-    files.forEach(function (file) {
-      var locale = file.replace(/\.json$/, '').replace(/i18n\//, '');
-      var outputFile = path.join(myDestDir, 'i18n-' + locale + '.js');
-      var inputFilePath = path.join(srcDir, file);
-
-      var content = fs.readFileSync(inputFilePath, { encoding: 'utf8' });
-      var outputString = processFile(content, file);
-
-      fs.writeFileSync(outputFile, outputString);
-    });
-  });
-}
-
-function processFile(string, file) {
-  var locale = file.replace(/\.json$/, '').replace(/i18n\//, '');
-
-  var out = '';
-
-  // Ember i18n translations
-  out += 'if(typeof Translations === \'undefined\') { var Translations = {} };\n'
-  out += 'Translations.locale = \'' + locale + '\';\n';
-  out += 'Translations.translations = Translations.translations || {};\n';
-  out += 'Translations.translations = _.extend(Translations.translations, ';
-  out += string + ');\n';
-
-  return out;
-}
+module.exports = JStoJSON;
